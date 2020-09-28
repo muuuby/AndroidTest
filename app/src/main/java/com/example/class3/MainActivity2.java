@@ -1,6 +1,8 @@
 package com.example.class3;
 
+import android.app.Activity;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.util.Log;
@@ -58,6 +60,14 @@ public class MainActivity2 extends AppCompatActivity {
         Float e = Float.parseFloat(euro);
         won = text3.getText().toString();
         Float w = Float.parseFloat(won);
+
+        //修改文件
+        SharedPreferences sp = getSharedPreferences("myrate", Activity.MODE_PRIVATE);
+        SharedPreferences.Editor editor = sp.edit();
+        editor.putFloat("dollar_rate",d);
+        editor.putFloat("euro_rate",e);
+        editor.putFloat("won_rate",w);
+        editor.apply();
 
         Intent intent = getIntent();
         Bundle bdl = new Bundle();

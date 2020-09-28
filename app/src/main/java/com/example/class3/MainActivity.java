@@ -1,12 +1,18 @@
 package com.example.class3;
 
 import android.Manifest;
+import android.app.Activity;
 import android.content.Intent;
+import android.content.SharedPreferences;
+import android.preference.PreferenceManager;
 import android.support.annotation.Nullable;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.Gravity;
+import android.view.Menu;
+import android.view.MenuInflater;
+import android.view.MenuItem;
 import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
@@ -27,9 +33,16 @@ public class MainActivity extends AppCompatActivity {
         setContentView(R.layout.activity_main);
 
         text2 = findViewById(R.id.t2);
-        dollarRate = 0.147f;
-        euroRate = 0.1147f;
-        wonRate = 0.1f;
+//        dollarRate = 0.147f;
+//        euroRate = 0.1147f;
+//        wonRate = 0.1f;
+
+        //修改文件
+        SharedPreferences sharedPreferences = getSharedPreferences("myrate", Activity.MODE_PRIVATE);
+        PreferenceManager.getDefaultSharedPreferences(this);
+        dollarRate = sharedPreferences.getFloat("dollar_rate",0.0f);
+        euroRate = sharedPreferences.getFloat("euro_rate",0.0f);
+        wonRate = sharedPreferences.getFloat("won_rate",0.0f);
     }
 
     public void btn1(View view) {
@@ -94,5 +107,32 @@ public class MainActivity extends AppCompatActivity {
             Log.i(TAG,"result:wonRate="+wonRate);
         }
         super.onActivityResult(requestCode, resultCode, data);
+    }
+    @Override
+    public boolean onCreateOptionsMenu(Menu menu) {
+        MenuInflater inflater = getMenuInflater();
+        inflater.inflate(R.menu.first_menu, menu);
+        return true;
+    }
+
+    @Override
+    public boolean onOptionsItemSelected(MenuItem item) {
+        // Handle item selection
+        switch (item.getItemId()) {
+            case R.id.item1:
+                Intent main2 = new Intent(this,MainActivity2.class);
+                main2.putExtra("dollar_rate_key",dollarRate);
+                main2.putExtra("euro_rate_key",euroRate);
+                main2.putExtra("won_rate_key",wonRate);
+
+                Log.i(TAG,"openmain2:dollarRate="+dollarRate);
+                Log.i(TAG,"openmain2:euroRate="+euroRate);
+                Log.i(TAG,"openmain2:wonRate="+wonRate);
+
+                startActivityForResult(main2, 2);
+                return true;
+            default:
+                return super.onOptionsItemSelected(item);
+        }
     }
 }
