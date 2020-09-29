@@ -22,6 +22,11 @@ import android.widget.TableLayout;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import org.jsoup.Jsoup;
+import org.jsoup.nodes.Document;
+import org.jsoup.nodes.Element;
+import org.jsoup.select.Elements;
+
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
@@ -59,9 +64,12 @@ public class MainActivity extends AppCompatActivity {
         handler = new Handler(){
             @Override
             public void handleMessage(Message msg) {
-                if(msg.what==5) {
-                    String str = (String)msg.obj;
-                    Log.i(TAG,"handleMessage:getMessage msg = " + str);
+                if(msg.what==3) {
+                    Bundle bdl = msg.getData();
+                    dollarRate = bdl.getFloat("dollar_rate_key",0.0f);
+                    euroRate = bdl.getFloat("euro_rate_key",0.0f);
+                    wonRate = bdl.getFloat("won_rate_key",0.0f);
+                    Log.i(TAG,"handleMessage:getMessage msg = " + dollarRate);
                 }
                 super.handleMessage(msg);
             }
@@ -167,24 +175,49 @@ public class MainActivity extends AppCompatActivity {
     public class myThread implements Runnable{
         @Override
         public void run() {
-            URL url = null;
-            try{
-                Log.i(TAG,"success");
-                url = new URL("https://www.usd-cny.com/bankofchina.htm");
-                Log.i(TAG,"success");
-                HttpURLConnection http = (HttpURLConnection)url.openConnection();
-                InputStream in = http.getInputStream();
+            String url = "https://www.usd-cny.com/bankofchina.htm";
+            float dollar=0.0f,euro=0.0f,won=0.0f;
+            try {
+                //解析html文件
+                Document doc = Jsoup.connect(url).get();
+                Log.i(TAG,"run:" + doc.title());
+                //读取table内容
+                Elements tables = doc.getElementsByTag("table");
+                Element table6 = tables.get(0);
+                Elements tds = table6.getElementsByTag("td");
+                for(int i=0;i<tds.size();i+=6){
+                    Element td1 = tds.get(i);
+                    Element td2 = tds.get(i+5);
 
-                String html = inputStream2String(in);
-                Log.i(TAG,"run:html=" + html);
-            }catch(MalformedURLException e){
+                    String str1 = td1.text();
+                    String val = td2.text();
+                    Log.i(TAG,"run:" + str1 + "==>" + val);
 
-            } catch (IOException e) {
+                    float v = 100f / Float.parseFloat(val);
+                    if(str1.equals("美元")){
+                        dollar = v;
+                    }else if(str1.equals("英镑")){
+                        euro = v;
+                    }else if(str1.equals("韩元")){
+                        won = v;
+                    }
+                }
+            } catch (Exception e) {
                 e.printStackTrace();
             }
-            Message message = handler.obtainMessage(5);
-            message.obj = "hello from run()";
-            handler.sendMessage(message);
+
+            //利用bundle对象来传值
+            Message msg = handler.obtainMessage(3);
+            Bundle bdl = new Bundle();
+            bdl.putFloat("dollar_rate_key",dollar);
+            bdl.putFloat("euro_rate_key",euro);
+            bdl.putFloat("won_rate_key",won);
+            msg.setData(bdl);
+            msg.sendToTarget();
+
+//            Message message = handler.obtainMessage(5);
+//            message.obj = "hello from run()";
+//            handler.sendMessage(message);
         }
     }
 
