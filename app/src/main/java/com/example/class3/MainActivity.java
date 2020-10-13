@@ -1,6 +1,5 @@
 package com.example.class3;
 
-import android.Manifest;
 import android.app.Activity;
 import android.content.Intent;
 import android.content.SharedPreferences;
@@ -11,14 +10,11 @@ import android.support.annotation.Nullable;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.util.Log;
-import android.view.Gravity;
 import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.MenuItem;
 import android.view.View;
-import android.widget.Button;
 import android.widget.EditText;
-import android.widget.TableLayout;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -31,9 +27,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.Reader;
-import java.net.HttpURLConnection;
-import java.net.MalformedURLException;
-import java.net.URL;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -50,26 +43,36 @@ public class MainActivity extends AppCompatActivity {
         setContentView(R.layout.activity_main);
 
         text2 = findViewById(R.id.t2);
-//        dollarRate = 0.147f;
-//        euroRate = 0.1147f;
-//        wonRate = 0.1f;
 
-        //修改文件
-        SharedPreferences sharedPreferences = getSharedPreferences("myrate", Activity.MODE_PRIVATE);
+        //读取文件
+        final SharedPreferences sharedPreferences = getSharedPreferences("myrate", Activity.MODE_PRIVATE);
         PreferenceManager.getDefaultSharedPreferences(this);
+        final String predate = sharedPreferences.getString("date","");
+        Log.i(TAG,"result:date="+predate);
         dollarRate = sharedPreferences.getFloat("dollar_rate",0.0f);
         euroRate = sharedPreferences.getFloat("euro_rate",0.0f);
         wonRate = sharedPreferences.getFloat("won_rate",0.0f);
 
+        final SharedPreferences.Editor editor = sharedPreferences.edit();
+
         handler = new Handler(){
-            @Override
             public void handleMessage(Message msg) {
                 if(msg.what==3) {
                     Bundle bdl = msg.getData();
-                    dollarRate = bdl.getFloat("dollar_rate_key",0.0f);
-                    euroRate = bdl.getFloat("euro_rate_key",0.0f);
-                    wonRate = bdl.getFloat("won_rate_key",0.0f);
-                    Log.i(TAG,"handleMessage:getMessage msg = " + dollarRate);
+                    String date = bdl.getString("date");
+                    String d = date.substring(12,22);
+                    if(!d.equals(predate)){
+                        Log.i(TAG,"UPDATE");
+                        dollarRate = bdl.getFloat("dollar_rate_key",0.0f);
+                        euroRate = bdl.getFloat("euro_rate_key",0.0f);
+                        wonRate = bdl.getFloat("won_rate_key",0.0f);
+
+                        editor.putFloat("dollar_rate",dollarRate);
+                        editor.putFloat("euro_rate",euroRate);
+                        editor.putFloat("won_rate",wonRate);
+                        editor.putString("date",d);
+                        editor.commit();
+                    }
                 }
                 super.handleMessage(msg);
             }
@@ -175,46 +178,50 @@ public class MainActivity extends AppCompatActivity {
     public class myThread implements Runnable{
         @Override
         public void run() {
-            String url = "https://www.usd-cny.com/bankofchina.htm";
-            float dollar=0.0f,euro=0.0f,won=0.0f;
-            try {
-                //解析html文件
-                Document doc = Jsoup.connect(url).get();
-                Log.i(TAG,"run:" + doc.title());
-                //读取table内容
-                Elements tables = doc.getElementsByTag("table");
-                Element table6 = tables.get(0);
-                Elements tds = table6.getElementsByTag("td");
-                for(int i=0;i<tds.size();i+=6){
-                    Element td1 = tds.get(i);
-                    Element td2 = tds.get(i+5);
+                String url = "https://www.usd-cny.com/bankofchina.htm";
+                float dollar=0.0f,euro=0.0f,won=0.0f;
+                String date1=null;
+                try {
+                    //解析html文件
+                    Document doc = Jsoup.connect(url).get();
+                    Log.i(TAG,"run:" + doc.title());
+                    //读取时间
+                    Elements date = doc.getElementsByClass("time");
+                    date1 = date.text();
+                    //读取table内容
+                    Elements tables = doc.getElementsByTag("table");
+                    Element table6 = tables.get(0);
+                    Elements tds = table6.getElementsByTag("td");
+                    for(int i=0;i<tds.size();i+=6){
+                        Element td1 = tds.get(i);
+                        Element td2 = tds.get(i+5);
 
-                    String str1 = td1.text();
-                    String val = td2.text();
-                    Log.i(TAG,"run:" + str1 + "==>" + val);
+                        String str1 = td1.text();
+                        String val = td2.text();
+                        Log.i(TAG,"run:" + str1 + "==>" + val);
 
-                    float v = 100f / Float.parseFloat(val);
-                    if(str1.equals("美元")){
-                        dollar = v;
-                    }else if(str1.equals("英镑")){
-                        euro = v;
-                    }else if(str1.equals("韩元")){
-                        won = v;
+                        float v = 100f / Float.parseFloat(val);
+                        if(str1.equals("美元")){
+                            dollar = v;
+                        }else if(str1.equals("英镑")){
+                            euro = v;
+                        }else if(str1.equals("韩元")){
+                            won = v;
+                        }
                     }
+                } catch (Exception e) {
+                    e.printStackTrace();
                 }
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
 
-            //利用bundle对象来传值
-            Message msg = handler.obtainMessage(3);
-            Bundle bdl = new Bundle();
-            bdl.putFloat("dollar_rate_key",dollar);
-            bdl.putFloat("euro_rate_key",euro);
-            bdl.putFloat("won_rate_key",won);
-            msg.setData(bdl);
-            msg.sendToTarget();
-
+                //利用bundle对象来传值
+                Message msg = handler.obtainMessage(3);
+                Bundle bdl = new Bundle();
+                bdl.putFloat("dollar_rate_key",dollar);
+                bdl.putFloat("euro_rate_key",euro);
+                bdl.putFloat("won_rate_key",won);
+                bdl.putString("date",date1);
+                msg.setData(bdl);
+                msg.sendToTarget();
 //            Message message = handler.obtainMessage(5);
 //            message.obj = "hello from run()";
 //            handler.sendMessage(message);
