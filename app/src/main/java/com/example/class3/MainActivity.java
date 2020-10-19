@@ -63,6 +63,8 @@ public class MainActivity extends AppCompatActivity {
                     String d = date.substring(12,22);
                     if(!d.equals(predate)){
                         Log.i(TAG,"UPDATE");
+
+                        //更新文件
                         dollarRate = bdl.getFloat("dollar_rate_key",0.0f);
                         euroRate = bdl.getFloat("euro_rate_key",0.0f);
                         wonRate = bdl.getFloat("won_rate_key",0.0f);

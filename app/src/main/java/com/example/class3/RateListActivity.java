@@ -1,11 +1,14 @@
 package com.example.class3;
 
+import android.app.Activity;
 import android.app.ListActivity;
 import android.content.Context;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
+import android.preference.PreferenceManager;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -50,22 +53,67 @@ public class RateListActivity extends ListActivity implements
                     listItems = new ArrayList<HashMap<String, String>>();
                     //获取数据
                     Bundle bdl = msg.getData();
+                    String date = bdl.getString("date");
+                    String d = date.substring(12, 22);
+
+                    //读取文件里储存的日期
+                    final SharedPreferences sharedPreferences = getSharedPreferences("myrate", Activity.MODE_PRIVATE);
+                    PreferenceManager.getDefaultSharedPreferences(RateListActivity.this);
+                    final String predate = sharedPreferences.getString("date", "");
+                    Log.i(TAG, "result:date=" + predate);
+                    final SharedPreferences.Editor editor = sharedPreferences.edit();
+
+                    //日期不同则更新数据库
                     List<String> list1 = new ArrayList<String>();
-                    for(int i=0;i<162;i+=6){
-                        String ss = bdl.getString("item"+i);
-                        list1.add(ss);
+                    RateManager rm = new RateManager(RateListActivity.this);
+                    if (!d.equals(predate)) {
+                        Log.i(TAG,"UPDATE");
+                        for (int i = 0; i < 162; i += 6) {
+                            String ss = bdl.getString("item" + i);
+                            list1.add(ss);
+                        }
+
+                        //一个个item
+                        for (int i = 0; i < 162; i += 6) {
+                            HashMap<String, String> map = new HashMap<String,
+                                    String>();
+                            String ss = bdl.getString("item" + i);
+                            String[] ratelist = ss.split("==>");
+                            String rate = ratelist[0];
+                            String detail = ratelist[1];
+
+                            RateItem item = new RateItem();
+                            item.setId(i/6);
+                            item.setCurName(rate);
+                            item.setCurRate(detail);
+                            rm.add(item);
+                            Log.i(TAG,String.valueOf(i/6));
+
+                            map.put("ItemTitle", rate); // 货币名称
+                            map.put("ItemDetail", detail); // 数据
+                            listItems.add(map);
+                        }
+                        editor.putString("date",d);
+                        editor.commit();
+                        Log.i(TAG,"update success");
+                    }else{
+                        //日期相同则读取数据库
+                        RateItem item = new RateItem();
+                        for(int i=1;i<28;i++){
+                            HashMap<String, String> map = new HashMap<String,
+                                    String>();
+                            Log.i(TAG,""+i);
+                            item = rm.findById(i);
+                            String rate = item.getCurRate();
+                            String name = item.getCurName();
+                            Log.i(TAG,name);
+                            map.put("ItemTitle", rate); // 货币名称
+                            map.put("ItemDetail", name); // 数据
+                            listItems.add(map);
+                        }
+                        Log.i(TAG,"datas from database");
                     }
-                    for (int i = 0; i < 162; i+=6) {
-                        HashMap<String, String> map = new HashMap<String,
-                                String>();
-                        String ss = bdl.getString("item"+i);
-                        String[] ratelist = ss.split("==>");
-                        String rate = ratelist[0];
-                        String detail = ratelist[1];
-                        map.put("ItemTitle", rate); // 标题文字
-                        map.put("ItemDetail", detail); // 详情描述
-                        listItems.add(map);
-                    }
+
                     //自定义adapter
                     MyAdapter myAdapter = new MyAdapter(RateListActivity.this,
                             R.layout.activity_rate_list,
@@ -141,7 +189,7 @@ public class RateListActivity extends ListActivity implements
         @Override
         public void run() {
             String url = "https://www.usd-cny.com/bankofchina.htm";
-            float dollar=0.0f,euro=0.0f,won=0.0f;
+            String date1;
 
             try {
                 //解析html文件
@@ -151,6 +199,10 @@ public class RateListActivity extends ListActivity implements
                 Elements tables = doc.getElementsByTag("table");
                 Element table6 = tables.get(0);
                 Elements tds = table6.getElementsByTag("td");
+
+                //读取时间
+                Elements date = doc.getElementsByClass("time");
+                date1 = date.text();
 
                 //利用bundle对象来传值
                 Message msg = handler.obtainMessage(7);
@@ -164,6 +216,7 @@ public class RateListActivity extends ListActivity implements
                     Log.i(TAG,"run:" + str1 + "==>" + val);
                     bdl.putString("item"+i,str1 + "==>" + val);
                 }
+                bdl.putString("date",date1);
                 msg.setData(bdl);
                 msg.sendToTarget();
 
